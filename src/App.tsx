@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Clapperboard,
     Play,
     ArrowLeft,
     Search,
-    User,
     Film,
-    Tag,
     Check,
     X,
-    Loader2 // Imported Loader for loading state
+    Loader2
 } from 'lucide-react';
 
 // --- Firebase Imports ---
@@ -51,23 +49,13 @@ interface SavedGameState {
 // --- Firebase Configuration ---
 // TODO: Replace with your actual config from Firebase Console -> Project Settings
 const firebaseConfig = {
-
-    apiKey: "AIzaSyAX2G32MkT-S3ugT2MTCyXBdwxIazM6_0A",
-
-    authDomain: "daily-reel-7439a.firebaseapp.com",
-
-    projectId: "daily-reel-7439a",
-
-    storageBucket: "daily-reel-7439a.firebasestorage.app",
-
-    messagingSenderId: "342026612733",
-
-    appId: "1:342026612733:web:c7fce866266cda8d3bb394",
-
-    measurementId: "G-8MCHGD2HRP"
-
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
-
 
 // Initialize Firebase
 // We use a try-catch block to prevent crashes if config is missing during development
@@ -76,7 +64,7 @@ try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
 } catch (error) {
-    console.warn("Firebase not initialized. Using fallback data. Check firebaseConfig.");
+    console.warn("Firebase not initialized. Using fallback data. Check firebaseConfig.", error);
 }
 
 // --- Mock Data (Database for Autocomplete) ---
@@ -105,39 +93,6 @@ const FALLBACK_MOVIES: Movie[] = [
             { name: 'Emily Blunt', image: 'https://image.tmdb.org/t/p/w200/n5.jpg' },
             { name: 'Matt Damon', image: 'https://image.tmdb.org/t/p/w200/el.jpg' },
             { name: 'Robert Downey Jr.', image: 'https://image.tmdb.org/t/p/w200/im.jpg' },
-        ]
-    },
-    // ... (You can keep the rest of the 25 movies here as backup if you want)
-    {
-        id: '2026-01-24',
-        title: 'Dune',
-        poster: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg',
-        director: 'Denis Villeneuve',
-        releaseYear: '2021',
-        boxOffice: '$402,027,830',
-        productionCompany: 'Legendary Pictures',
-        genres: ['Science Fiction', 'Adventure'],
-        cast: [
-            { name: 'Timothée Chalamet', image: 'https://image.tmdb.org/t/p/w200/tc.jpg' },
-            { name: 'Rebecca Ferguson', image: 'https://image.tmdb.org/t/p/w200/rf.jpg' },
-            { name: 'Oscar Isaac', image: 'https://image.tmdb.org/t/p/w200/oi.jpg' },
-            { name: 'Josh Brolin', image: 'https://image.tmdb.org/t/p/w200/jb.jpg' },
-        ]
-    },
-    {
-        id: '2026-01-09',
-        title: 'Inception',
-        poster: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKqWDUXfF89WnUSKTb.jpg',
-        director: 'Christopher Nolan',
-        releaseYear: '2010',
-        boxOffice: '$836,836,967',
-        productionCompany: 'Warner Bros. Pictures',
-        genres: ['Action', 'Science Fiction', 'Adventure'],
-        cast: [
-            { name: 'Leonardo DiCaprio', image: 'https://image.tmdb.org/t/p/w200/wo2hJpn04vbtmh0B9utCFdsQhxM.jpg' },
-            { name: 'Joseph Gordon-Levitt', image: 'https://image.tmdb.org/t/p/w200/4X1X1tV8k3E2H7e6r0O9w1W4.jpg' },
-            { name: 'Elliot Page', image: 'https://image.tmdb.org/t/p/w200/tp5PF4kE7yq7q5q5.jpg' },
-            { name: 'Tom Hardy', image: 'https://image.tmdb.org/t/p/w200/d81K0RH8UX7tZj49tZaQhZ9ewH.jpg' },
         ]
     }
 ];
@@ -530,7 +485,7 @@ const GameScreen = ({
 // --- Main App Component ---
 
 export default function App() {
-    const [currentScreen, setCurrentScreen] = useState<'archive' | 'game'>('loading');
+    const [currentScreen, setCurrentScreen] = useState<'archive' | 'game' | 'loading'>('loading');
     const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
     const [progress, setProgress] = useState<Record<string, SavedGameState>>({});
 
