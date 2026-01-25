@@ -47,14 +47,14 @@ interface SavedGameState {
 }
 
 // --- Firebase Configuration ---
-// TODO: Replace with your actual config from Firebase Console -> Project Settings
+// Updated with your specific project details
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY_HERE",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAX2G32MkT-S3ugT2MTCyXBdwxIazM6_0A",
+    authDomain: "daily-reel-7439a.firebaseapp.com",
+    projectId: "daily-reel-7439a",
+    storageBucket: "daily-reel-7439a.firebasestorage.app",
+    messagingSenderId: "342026612733",
+    appId: "1:342026612733:web:c7fce866266cda8d3bb394"
 };
 
 // Initialize Firebase
