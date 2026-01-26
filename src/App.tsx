@@ -93,10 +93,10 @@ const FALLBACK_MOVIES: Movie[] = [
 
 const AdSidebar = () => {
     return (
-        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-gray-900 p-6 items-center justify-center sticky top-0 h-screen">
-            <div className="w-full h-96 bg-gray-900 rounded flex flex-col items-center justify-center border border-gray-800">
-                <span className="text-gray-600 font-bold text-xl">Web Ad Space</span>
-                <span className="text-gray-700 text-sm mt-2">Targeted Movie Ads</span>
+        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-black p-6 items-center justify-center sticky top-0 h-screen">
+            <div className="w-full h-96 bg-black rounded flex flex-col items-center justify-center border border-gray-800">
+                <span className="text-gray-700 font-bold text-xl">Web Ad Space</span>
+                <span className="text-gray-800 text-sm mt-2">Targeted Movie Ads</span>
             </div>
         </div>
     );
@@ -117,16 +117,16 @@ const InterstitialAd = ({ onAdFinished }: { onAdFinished: () => void }) => {
 
     return (
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center animate-fade-in">
-            <div className="w-full max-w-md bg-gray-900 h-full md:h-auto md:rounded-xl p-8 flex flex-col justify-between items-center border border-gray-800">
-                <span className="text-gray-400 text-xs font-bold tracking-widest uppercase">Sponsored Video</span>
+            <div className="w-full max-w-md bg-black h-full md:h-auto md:rounded-xl p-8 flex flex-col justify-between items-center border border-gray-800">
+                <span className="text-gray-500 text-xs font-bold tracking-widest uppercase">Sponsored Video</span>
 
-                <div className="w-full aspect-video bg-gray-800 rounded-lg flex flex-col items-center justify-center my-8 border border-gray-700">
+                <div className="w-full aspect-video bg-gray-900 rounded-lg flex flex-col items-center justify-center my-8 border border-gray-800">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
                     <span className="text-white font-medium">Playing Video Ad...</span>
                 </div>
 
                 <button
-                    className="bg-gray-800 text-white px-6 py-2 rounded-full font-mono text-sm border border-gray-700"
+                    className="bg-gray-900 text-white px-6 py-2 rounded-full font-mono text-sm border border-gray-800"
                     disabled
                 >
                     {secondsLeft > 0 ? `Reward in ${secondsLeft}s` : 'Closing...'}
@@ -169,17 +169,13 @@ const AutoCompleteInput = ({
     const handleChange = (text: string) => {
         setQuery(text);
         onGuess(text);
-        setActiveSuggestionIndex(-1); // Reset selection on typing
+        setActiveSuggestionIndex(-1);
 
         if (text.length > 1) {
-            // Use Set to remove duplicates between static list and fetched movies
             const uniqueTitles = Array.from(new Set(allPossibleMovies));
-
             const filtered = uniqueTitles.filter(title =>
                 title.toLowerCase().includes(text.toLowerCase())
             );
-
-            // Limit suggestions to top 5
             setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
         } else {
@@ -191,6 +187,7 @@ const AutoCompleteInput = ({
         setQuery(title);
         onGuess(title);
         setShowSuggestions(false);
+        setActiveSuggestionIndex(-1); // Reset selection so next Enter submits
         inputRef.current?.focus();
     };
 
@@ -206,12 +203,13 @@ const AutoCompleteInput = ({
                 setActiveSuggestionIndex(prev => (prev === suggestions.length - 1 ? 0 : prev + 1));
             }
         } else if (e.key === 'Enter') {
-            // If a suggestion is highlighted using arrows, select it
-            if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+            // If menu is open and an item is highlighted, select it
+            if (showSuggestions && activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
                 e.preventDefault();
                 handleSelect(suggestions[activeSuggestionIndex]);
             } else {
-                // Otherwise submit the current text
+                // Otherwise (menu closed or no highlight), submit the guess
+                e.preventDefault(); // Prevent default form submission if any
                 onEnter();
                 setShowSuggestions(false);
                 setQuery('');
@@ -225,7 +223,8 @@ const AutoCompleteInput = ({
                 <input
                     ref={inputRef}
                     type="text"
-                    className="w-full bg-gray-900 text-white p-4 pl-12 rounded-lg border border-gray-800 focus:border-red-600 focus:outline-none placeholder-gray-500"
+                    autoComplete="off"
+                    className="w-full bg-gray-900 text-white p-4 pl-12 rounded-lg border border-black focus:border-red-600 focus:outline-none placeholder-gray-600"
                     placeholder="Search for a movie..."
                     value={query}
                     onChange={(e) => handleChange(e.target.value)}
@@ -233,15 +232,14 @@ const AutoCompleteInput = ({
                 />
                 <Search className="absolute left-4 top-4 text-gray-500 w-5 h-5" />
 
-                {/* Suggestions appearing upwards */}
                 {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-xl">
+                    <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-2xl">
                         {suggestions.map((suggestion, index) => (
                             <li
                                 key={index}
                                 onClick={() => handleSelect(suggestion)}
-                                className={`p-3 cursor-pointer text-white border-b border-gray-800 last:border-0
-                  ${index === activeSuggestionIndex ? 'bg-gray-700' : 'hover:bg-gray-800'}
+                                className={`p-3 cursor-pointer text-white border-b border-black last:border-0
+                  ${index === activeSuggestionIndex ? 'bg-gray-800' : 'hover:bg-gray-800'}
                 `}
                             >
                                 {suggestion}
@@ -285,7 +283,6 @@ const GameScreen = ({
     const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>(initialState?.status || 'playing');
     const [showAd, setShowAd] = useState(false);
 
-    // Combine static DB with the actual movies loaded from Firebase to ensure answer is always present
     const combinedTitles = [
         ...TOP_MOVIES_DATABASE,
         ...allMoviesList.map(m => m.title)
@@ -344,8 +341,8 @@ const GameScreen = ({
         <div className="flex flex-col h-full bg-black min-h-screen">
             {showAd && <InterstitialAd onAdFinished={handleAdFinished} />}
 
-            {/* Header - Fixed Top */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-900 bg-black z-10 shrink-0">
+            {/* Header - Fixed Top - Black Border */}
+            <div className="flex justify-between items-center p-4 border-b border-black bg-black z-10 shrink-0">
                 <button onClick={goBack} className="flex items-center text-white hover:text-gray-300 transition-colors">
                     <ArrowLeft className="w-6 h-6 mr-2" />
                     <span className="hidden sm:inline font-medium">Archive</span>
@@ -398,10 +395,9 @@ const GameScreen = ({
                         <p className="text-white text-xl">It was <span className="font-bold border-b-2 border-red-600">{movie.title}</span></p>
                     </div>
                 ) : (
-                    // NEW COMPACT ACTOR LAYOUT
                     <div className="grid grid-cols-1 gap-3 mb-6">
                         {movie.cast.map((actor, index) => (
-                            <div key={index} className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-800 items-center h-20 shadow-md">
+                            <div key={index} className="flex bg-gray-900 rounded-lg overflow-hidden border border-black items-center h-20 shadow-md">
                                 <div className="w-16 h-full bg-gray-800 shrink-0">
                                     <img
                                         src={actor.image}
@@ -422,8 +418,8 @@ const GameScreen = ({
                     </div>
                 )}
 
-                {/* Clues Section */}
-                <div className="bg-gray-900/50 rounded-xl p-5 mb-4 border border-gray-800 backdrop-blur-sm">
+                {/* Clues Section - Darker borders */}
+                <div className="bg-gray-900/50 rounded-xl p-5 mb-4 border border-gray-900 backdrop-blur-sm">
                     <div className="flex items-center mb-4">
                         <Film className="w-4 h-4 text-red-500 mr-2" />
                         <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Movie Details</h3>
@@ -431,7 +427,7 @@ const GameScreen = ({
 
                     <div className="space-y-3">
                         {/* Clue 1 */}
-                        <div className={`flex justify-between items-center py-2 border-b ${showBoxOffice ? 'border-red-900/30' : 'border-gray-800'}`}>
+                        <div className={`flex justify-between items-center py-2 border-b ${showBoxOffice ? 'border-red-900/30' : 'border-black'}`}>
                             <span className="text-gray-400 text-sm">Box Office / Production</span>
                             <span className={`font-medium text-right text-sm ${showBoxOffice ? 'text-white' : 'text-gray-600'}`}>
                 {showBoxOffice ? (
@@ -444,7 +440,7 @@ const GameScreen = ({
                         </div>
 
                         {/* Clue 2 */}
-                        <div className={`flex justify-between items-center py-2 border-b ${showReleaseYear ? 'border-red-900/30' : 'border-gray-800'}`}>
+                        <div className={`flex justify-between items-center py-2 border-b ${showReleaseYear ? 'border-red-900/30' : 'border-black'}`}>
                             <span className="text-gray-400 text-sm">Release Year</span>
                             <span className={`font-medium text-sm ${showReleaseYear ? 'text-white' : 'text-gray-600'}`}>
                 {showReleaseYear ? movie.releaseYear : 'Locked 🔒'}
@@ -452,7 +448,7 @@ const GameScreen = ({
                         </div>
 
                         {/* Clue 3 (Genres) */}
-                        <div className={`flex justify-between items-center py-2 border-b ${showGenres ? 'border-red-900/30' : 'border-gray-800'}`}>
+                        <div className={`flex justify-between items-center py-2 border-b ${showGenres ? 'border-red-900/30' : 'border-black'}`}>
                             <span className="text-gray-400 text-sm">Genres</span>
                             <span className={`font-medium text-sm ${showGenres ? 'text-white' : 'text-gray-600'}`}>
                 {showGenres ? (
@@ -483,7 +479,7 @@ const GameScreen = ({
                         <p className="text-gray-500 text-xs uppercase font-bold mb-2 text-center">Previous Guesses</p>
                         <div className="flex flex-wrap gap-2 justify-center">
                             {guesses.map((g, i) => (
-                                <span key={i} className="px-3 py-1 bg-gray-800 rounded text-gray-400 text-sm line-through decoration-red-500 decoration-2">
+                                <span key={i} className="px-3 py-1 bg-gray-900 rounded text-gray-400 text-sm line-through decoration-red-500 decoration-2">
                        {g}
                     </span>
                             ))}
@@ -492,8 +488,8 @@ const GameScreen = ({
                 )}
             </div>
 
-            {/* FIXED FOOTER for Input/Button - Increased padding for Mobile Safes */}
-            <div className="border-t border-gray-900 bg-black p-4 shrink-0 pb-12 z-20">
+            {/* FIXED FOOTER - Increased Bottom Padding for Mobile */}
+            <div className="border-t border-black bg-black p-4 shrink-0 pb-24 z-20">
                 {gameState === 'playing' ? (
                     <AutoCompleteInput
                         onGuess={setGuess}
@@ -526,12 +522,8 @@ export default function App() {
     const [moviesList, setMoviesList] = useState<Movie[]>([]);
     const [loadingMovies, setLoadingMovies] = useState(true);
 
-    // --- Browser History / Back Button Logic ---
     useEffect(() => {
-        // Handler for browser back button
-        // Removed unused 'event' parameter to fix build error
         const handlePopState = () => {
-            // If we are on the game screen and user goes back, return to archive
             if (currentScreen === 'game') {
                 setCurrentScreen('archive');
                 setSelectedMovie(null);
@@ -542,24 +534,20 @@ export default function App() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, [currentScreen]);
 
-    // --- Start Movie with History Push ---
     const startMovie = (movie: Movie) => {
         setSelectedMovie(movie);
         setCurrentScreen('game');
-        // Push a new state to history so back button works
         window.history.pushState({ screen: 'game' }, '', window.location.pathname);
     };
 
     const goBackToArchive = () => {
         setCurrentScreen('archive');
         setSelectedMovie(null);
-        // Go back in history manually if button clicked
         if (window.history.state?.screen === 'game') {
             window.history.back();
         }
     };
 
-    // Fetch movies from Firebase on init
     useEffect(() => {
         const fetchMovies = async () => {
             if (!db) {
@@ -599,7 +587,6 @@ export default function App() {
         fetchMovies();
     }, []);
 
-    // Check progress logic once movies are loaded
     useEffect(() => {
         if (loadingMovies) return;
 
@@ -612,7 +599,6 @@ export default function App() {
             }
         }
 
-        // Always start on Archive screen now
         setCurrentScreen('archive');
 
     }, [loadingMovies]);
@@ -632,10 +618,10 @@ export default function App() {
         const unplayed = otherMovies.find(m => !progress[m.id] || progress[m.id].status === 'playing');
 
         if (unplayed) {
-            startMovie(unplayed); // Use wrapper to handle history
+            startMovie(unplayed);
         } else {
             const random = otherMovies[Math.floor(Math.random() * otherMovies.length)];
-            startMovie(random); // Use wrapper to handle history
+            startMovie(random);
         }
     };
 
@@ -655,7 +641,7 @@ export default function App() {
                 <AdSidebar />
 
                 {/* Center Content */}
-                <div className="flex-1 max-w-xl mx-auto border-x border-gray-900 h-full bg-black relative shadow-2xl shadow-black flex flex-col">
+                <div className="flex-1 max-w-xl mx-auto border-x border-black h-full bg-black relative shadow-2xl shadow-black flex flex-col">
                     {currentScreen === 'archive' ? (
                         <div className="flex-1 overflow-y-auto p-6">
                             <div className="flex items-center justify-center mb-2">
@@ -675,7 +661,7 @@ export default function App() {
                                             key={index}
                                             onClick={() => startMovie(movie)}
                                             className={`w-full flex items-center bg-gray-900 hover:bg-gray-800 p-4 rounded-xl border transition-all group text-left
-                            ${status === 'won' ? 'border-green-900/50' : status === 'lost' ? 'border-red-900/50' : 'border-gray-800'}
+                            ${status === 'won' ? 'border-green-900/50' : status === 'lost' ? 'border-red-900/50' : 'border-black'}
                         `}
                                         >
                                             <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 font-bold transition-colors shrink-0

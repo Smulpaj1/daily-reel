@@ -1,12 +1,12 @@
 // A curated list of popular movies for autocomplete
 // You can expand this list as much as you want.
 export const TOP_MOVIES_DATABASE = [
-    "Iron Man 3",
+    "Iron Man 3", "Iron Man 2",
     "The Shawshank Redemption",
     "The Godfather",
     "The Dark Knight",
     "The Godfather Part II",
-    "12 Angry Men",
+    "12 Angry Men", "Iron Man 2",
     "Schindler's List",
     "The Lord of the Rings: The Return of the King",
     "Pulp Fiction",
