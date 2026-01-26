@@ -22,6 +22,10 @@ import {
     limit
 } from "firebase/firestore";
 
+// --- Data Imports ---
+// Hämta filmdatabasen från den separata filen
+import { TOP_MOVIES_DATABASE } from './data/topMovies';
+
 // --- Types ---
 
 interface Actor {
@@ -47,7 +51,6 @@ interface SavedGameState {
 }
 
 // --- Firebase Configuration ---
-// Updated with your specific project details
 const firebaseConfig = {
     apiKey: "AIzaSyAX2G32MkT-S3ugT2MTCyXBdwxIazM6_0A",
     authDomain: "daily-reel-7439a.firebaseapp.com",
@@ -58,26 +61,15 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// We use a try-catch block to prevent crashes if config is missing during development
 let db: any;
 try {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
 } catch (error) {
-    console.warn("Firebase not initialized. Using fallback data. Check firebaseConfig.", error);
+    console.warn("Firebase not initialized.", error);
 }
 
-// --- Mock Data (Database for Autocomplete) ---
-const MOVIE_DATABASE_TITLES = [
-    "Inception", "The Godfather", "Barbie", "Interstellar", "Pulp Fiction",
-    "The Dark Knight", "Fight Club", "Forrest Gump", "The Matrix", "Goodfellas",
-    "Star Wars", "Parasite", "Avengers: Endgame", "Spider-Man: No Way Home", "Titanic",
-    "The Shawshank Redemption", "Gladiator", "Joker", "The Wolf of Wall Street", "Dune",
-    "Oppenheimer", "Spirited Away", "The Silence of the Lambs", "Se7en", "Back to the Future",
-    "Jurassic Park", "The Lion King", "Avatar", "Top Gun: Maverick", "Black Panther"
-];
-
-// --- Fallback Data (Used if Database is empty or fails) ---
+// --- Fallback Data ---
 const FALLBACK_MOVIES: Movie[] = [
     {
         id: '2026-01-25',
@@ -101,10 +93,10 @@ const FALLBACK_MOVIES: Movie[] = [
 
 const AdSidebar = () => {
     return (
-        <div className="hidden lg:flex flex-col w-64 bg-gray-900 border-x border-gray-800 p-6 items-center justify-center sticky top-0 h-screen">
-            <div className="w-full h-96 bg-gray-800 rounded flex flex-col items-center justify-center border border-gray-700">
-                <span className="text-gray-500 font-bold text-xl">Web Ad Space</span>
-                <span className="text-gray-600 text-sm mt-2">Targeted Movie Ads</span>
+        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-gray-900 p-6 items-center justify-center sticky top-0 h-screen">
+            <div className="w-full h-96 bg-gray-900 rounded flex flex-col items-center justify-center border border-gray-800">
+                <span className="text-gray-600 font-bold text-xl">Web Ad Space</span>
+                <span className="text-gray-700 text-sm mt-2">Targeted Movie Ads</span>
             </div>
         </div>
     );
@@ -144,19 +136,23 @@ const InterstitialAd = ({ onAdFinished }: { onAdFinished: () => void }) => {
     );
 };
 
-// Autocomplete Input Component
+// Autocomplete Input Component with Keyboard Navigation
 const AutoCompleteInput = ({
                                onGuess,
                                remainingGuesses,
-                               onEnter
+                               onEnter,
+                               allPossibleMovies
                            }: {
     onGuess: (val: string) => void,
     remainingGuesses: number,
-    onEnter: () => void
+    onEnter: () => void,
+    allPossibleMovies: string[]
 }) => {
     const [query, setQuery] = useState('');
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -173,11 +169,18 @@ const AutoCompleteInput = ({
     const handleChange = (text: string) => {
         setQuery(text);
         onGuess(text);
+        setActiveSuggestionIndex(-1); // Reset selection on typing
+
         if (text.length > 1) {
-            const filtered = MOVIE_DATABASE_TITLES.filter(title =>
+            // Use Set to remove duplicates between static list and fetched movies
+            const uniqueTitles = Array.from(new Set(allPossibleMovies));
+
+            const filtered = uniqueTitles.filter(title =>
                 title.toLowerCase().includes(text.toLowerCase())
             );
-            setSuggestions(filtered);
+
+            // Limit suggestions to top 5
+            setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
         } else {
             setShowSuggestions(false);
@@ -191,34 +194,55 @@ const AutoCompleteInput = ({
         inputRef.current?.focus();
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (suggestions.length > 0) {
+                setActiveSuggestionIndex(prev => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (suggestions.length > 0) {
+                setActiveSuggestionIndex(prev => (prev === suggestions.length - 1 ? 0 : prev + 1));
+            }
+        } else if (e.key === 'Enter') {
+            // If a suggestion is highlighted using arrows, select it
+            if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+                e.preventDefault();
+                handleSelect(suggestions[activeSuggestionIndex]);
+            } else {
+                // Otherwise submit the current text
+                onEnter();
+                setShowSuggestions(false);
+                setQuery('');
+            }
+        }
+    };
+
     return (
         <div className="w-full" ref={wrapperRef}>
             <div className="relative">
                 <input
                     ref={inputRef}
                     type="text"
-                    className="w-full bg-gray-800 text-white p-4 pl-12 rounded-lg border border-gray-700 focus:border-red-600 focus:outline-none placeholder-gray-500"
+                    className="w-full bg-gray-900 text-white p-4 pl-12 rounded-lg border border-gray-800 focus:border-red-600 focus:outline-none placeholder-gray-500"
                     placeholder="Search for a movie..."
                     value={query}
                     onChange={(e) => handleChange(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            onEnter();
-                            setShowSuggestions(false);
-                            setQuery('');
-                        }
-                    }}
+                    onKeyDown={handleKeyDown}
                 />
                 <Search className="absolute left-4 top-4 text-gray-500 w-5 h-5" />
 
-                {/* Suggestions appearing upwards because this component is at the bottom */}
+                {/* Suggestions appearing upwards */}
                 {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-800 border border-gray-700 rounded-t-lg mb-1 max-h-48 overflow-y-auto shadow-xl">
+                    <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-xl">
                         {suggestions.map((suggestion, index) => (
                             <li
                                 key={index}
                                 onClick={() => handleSelect(suggestion)}
-                                className="p-3 hover:bg-gray-700 cursor-pointer text-white border-b border-gray-700 last:border-0"
+                                className={`p-3 cursor-pointer text-white border-b border-gray-800 last:border-0
+                  ${index === activeSuggestionIndex ? 'bg-gray-700' : 'hover:bg-gray-800'}
+                `}
                             >
                                 {suggestion}
                             </li>
@@ -246,20 +270,27 @@ const GameScreen = ({
                         goBack,
                         onNext,
                         initialState,
-                        onSaveProgress
+                        onSaveProgress,
+                        allMoviesList
                     }: {
     movie: Movie;
     goBack: () => void;
     onNext: () => void;
     initialState?: SavedGameState;
     onSaveProgress: (status: 'won' | 'lost' | 'playing', guesses: string[]) => void;
+    allMoviesList: Movie[];
 }) => {
     const [guess, setGuess] = useState('');
     const [guesses, setGuesses] = useState<string[]>(initialState?.guesses || []);
     const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>(initialState?.status || 'playing');
     const [showAd, setShowAd] = useState(false);
 
-    // RESET LOGIC when movie changes
+    // Combine static DB with the actual movies loaded from Firebase to ensure answer is always present
+    const combinedTitles = [
+        ...TOP_MOVIES_DATABASE,
+        ...allMoviesList.map(m => m.title)
+    ];
+
     useEffect(() => {
         if (initialState) {
             setGuesses(initialState.guesses);
@@ -304,7 +335,6 @@ const GameScreen = ({
         onNext();
     };
 
-    // Clue Order: Box Office -> Year -> Genres -> Director
     const showBoxOffice = incorrectGuesses >= 1 || gameState !== 'playing';
     const showReleaseYear = incorrectGuesses >= 2 || gameState !== 'playing';
     const showGenres = incorrectGuesses >= 3 || gameState !== 'playing';
@@ -315,7 +345,7 @@ const GameScreen = ({
             {showAd && <InterstitialAd onAdFinished={handleAdFinished} />}
 
             {/* Header - Fixed Top */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-black z-10 shrink-0">
+            <div className="flex justify-between items-center p-4 border-b border-gray-900 bg-black z-10 shrink-0">
                 <button onClick={goBack} className="flex items-center text-white hover:text-gray-300 transition-colors">
                     <ArrowLeft className="w-6 h-6 mr-2" />
                     <span className="hidden sm:inline font-medium">Archive</span>
@@ -368,14 +398,15 @@ const GameScreen = ({
                         <p className="text-white text-xl">It was <span className="font-bold border-b-2 border-red-600">{movie.title}</span></p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-4 mb-8">
+                    // NEW COMPACT ACTOR LAYOUT
+                    <div className="grid grid-cols-1 gap-3 mb-6">
                         {movie.cast.map((actor, index) => (
-                            <div key={index} className="bg-gray-900 rounded-lg overflow-hidden border border-gray-800 flex flex-col items-center pb-3 shadow-lg">
-                                <div className="w-full h-64 bg-gray-800 mb-2 overflow-hidden relative group">
+                            <div key={index} className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-800 items-center h-20 shadow-md">
+                                <div className="w-16 h-full bg-gray-800 shrink-0">
                                     <img
                                         src={actor.image}
                                         alt={actor.name}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        className="w-full h-full object-cover"
                                         onError={(e) => {
                                             const target = e.target as HTMLImageElement;
                                             if (target.src.includes('ui-avatars.com')) return;
@@ -383,7 +414,9 @@ const GameScreen = ({
                                         }}
                                     />
                                 </div>
-                                <span className="text-white text-sm font-medium text-center px-2 leading-tight">{actor.name}</span>
+                                <div className="px-4 flex-1">
+                                    <span className="text-white font-medium text-lg leading-tight block">{actor.name}</span>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -459,13 +492,14 @@ const GameScreen = ({
                 )}
             </div>
 
-            {/* FIXED FOOTER for Input/Button */}
-            <div className="border-t border-gray-800 bg-black p-4 shrink-0 pb-6 z-20">
+            {/* FIXED FOOTER for Input/Button - Increased padding for Mobile Safes */}
+            <div className="border-t border-gray-900 bg-black p-4 shrink-0 pb-12 z-20">
                 {gameState === 'playing' ? (
                     <AutoCompleteInput
                         onGuess={setGuess}
                         remainingGuesses={maxGuesses - incorrectGuesses}
                         onEnter={handleGuess}
+                        allPossibleMovies={combinedTitles}
                     />
                 ) : (
                     <button
@@ -489,14 +523,44 @@ export default function App() {
     const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
     const [progress, setProgress] = useState<Record<string, SavedGameState>>({});
 
-    // State for fetched movies
     const [moviesList, setMoviesList] = useState<Movie[]>([]);
     const [loadingMovies, setLoadingMovies] = useState(true);
+
+    // --- Browser History / Back Button Logic ---
+    useEffect(() => {
+        // Handler for browser back button
+        const handlePopState = (event: PopStateEvent) => {
+            // If we are on the game screen and user goes back, return to archive
+            if (currentScreen === 'game') {
+                setCurrentScreen('archive');
+                setSelectedMovie(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [currentScreen]);
+
+    // --- Start Movie with History Push ---
+    const startMovie = (movie: Movie) => {
+        setSelectedMovie(movie);
+        setCurrentScreen('game');
+        // Push a new state to history so back button works
+        window.history.pushState({ screen: 'game' }, '', window.location.pathname);
+    };
+
+    const goBackToArchive = () => {
+        setCurrentScreen('archive');
+        setSelectedMovie(null);
+        // Go back in history manually if button clicked
+        if (window.history.state?.screen === 'game') {
+            window.history.back();
+        }
+    };
 
     // Fetch movies from Firebase on init
     useEffect(() => {
         const fetchMovies = async () => {
-            // If DB not initialized, fallback immediately
             if (!db) {
                 setMoviesList(FALLBACK_MOVIES);
                 setLoadingMovies(false);
@@ -505,7 +569,6 @@ export default function App() {
 
             try {
                 const today = new Date().toISOString().split('T')[0];
-                // Fetch movies with date <= today, ordered by newest first
                 const q = query(
                     collection(db, "movies"),
                     where("id", "<=", today),
@@ -522,7 +585,6 @@ export default function App() {
                 if (fetchedMovies.length > 0) {
                     setMoviesList(fetchedMovies);
                 } else {
-                    // If no movies found (empty DB), use fallback
                     setMoviesList(FALLBACK_MOVIES);
                 }
             } catch (error) {
@@ -541,31 +603,18 @@ export default function App() {
         if (loadingMovies) return;
 
         const saved = localStorage.getItem('dailyreel-progress');
-        let loadedProgress = {};
         if (saved) {
             try {
-                loadedProgress = JSON.parse(saved);
-                setProgress(loadedProgress);
+                setProgress(JSON.parse(saved));
             } catch (e) {
                 console.error("Failed to parse progress", e);
             }
         }
 
-        if (moviesList.length > 0) {
-            const todayMovie = moviesList[0];
-            const todayStatus = (loadedProgress as any)[todayMovie.id];
+        // Always start on Archive screen now
+        setCurrentScreen('archive');
 
-            if (!todayStatus || todayStatus.status === 'playing') {
-                setSelectedMovie(todayMovie);
-                setCurrentScreen('game');
-            } else {
-                setCurrentScreen('archive');
-            }
-        } else {
-            // Should not happen due to fallback, but safe guard
-            setCurrentScreen('archive');
-        }
-    }, [loadingMovies, moviesList]);
+    }, [loadingMovies]);
 
     const saveProgress = (movieId: string, status: 'won' | 'lost' | 'playing', guesses: string[]) => {
         const newProgress = {
@@ -576,21 +625,16 @@ export default function App() {
         localStorage.setItem('dailyreel-progress', JSON.stringify(newProgress));
     };
 
-    const startMovie = (movie: Movie) => {
-        setSelectedMovie(movie);
-        setCurrentScreen('game');
-    };
-
     const handleNext = () => {
         if (!selectedMovie) return;
         const otherMovies = moviesList.filter(m => m.id !== selectedMovie.id);
         const unplayed = otherMovies.find(m => !progress[m.id] || progress[m.id].status === 'playing');
 
         if (unplayed) {
-            setSelectedMovie(unplayed);
+            startMovie(unplayed); // Use wrapper to handle history
         } else {
             const random = otherMovies[Math.floor(Math.random() * otherMovies.length)];
-            setSelectedMovie(random);
+            startMovie(random); // Use wrapper to handle history
         }
     };
 
@@ -610,7 +654,7 @@ export default function App() {
                 <AdSidebar />
 
                 {/* Center Content */}
-                <div className="flex-1 max-w-xl mx-auto border-x border-gray-800 h-full bg-black relative shadow-2xl shadow-black flex flex-col">
+                <div className="flex-1 max-w-xl mx-auto border-x border-gray-900 h-full bg-black relative shadow-2xl shadow-black flex flex-col">
                     {currentScreen === 'archive' ? (
                         <div className="flex-1 overflow-y-auto p-6">
                             <div className="flex items-center justify-center mb-2">
@@ -619,12 +663,12 @@ export default function App() {
                                 </div>
                                 <h1 className="text-3xl font-extrabold tracking-tight">Daily Reel</h1>
                             </div>
-                            <p className="text-gray-500 text-center mb-8 text-sm">Test your film knowledge against the top cast.</p>
+                            <p className="text-gray-500 text-center mb-8 text-sm">Guess the movie based on the top billed cast.</p>
 
                             <div className="space-y-3">
                                 {moviesList.map((movie, index) => {
                                     const status = progress[movie.id]?.status;
-                                    const puzzleNumber = moviesList.length - index; // Numbering based on list size
+                                    const puzzleNumber = moviesList.length - index;
                                     return (
                                         <button
                                             key={index}
@@ -644,7 +688,7 @@ export default function App() {
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className={`font-semibold text-lg transition-colors ${status ? 'text-gray-300' : 'text-white group-hover:text-red-500'}`}>
-                                                    Daily Puzzle #{puzzleNumber}
+                                                    Daily Reel #{puzzleNumber}
                                                 </h3>
                                                 <p className="text-gray-500 text-xs font-mono mt-1">{movie.id}</p>
                                             </div>
@@ -663,9 +707,10 @@ export default function App() {
                             <GameScreen
                                 movie={selectedMovie}
                                 initialState={progress[selectedMovie.id]}
-                                goBack={() => setCurrentScreen('archive')}
+                                goBack={goBackToArchive}
                                 onNext={handleNext}
                                 onSaveProgress={(s, g) => saveProgress(selectedMovie.id, s, g)}
+                                allMoviesList={moviesList}
                             />
                         )
                     )}
