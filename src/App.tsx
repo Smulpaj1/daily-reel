@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 
 // --- Data Imports ---
-// Hämta filmdatabasen från den separata filen
+// Ensure src/data/topMovies.ts exists
 import { TOP_MOVIES_DATABASE } from './data/topMovies';
 
 // --- Types ---
@@ -529,7 +529,8 @@ export default function App() {
     // --- Browser History / Back Button Logic ---
     useEffect(() => {
         // Handler for browser back button
-        const handlePopState = (event: PopStateEvent) => {
+        // Removed unused 'event' parameter to fix build error
+        const handlePopState = () => {
             // If we are on the game screen and user goes back, return to archive
             if (currentScreen === 'game') {
                 setCurrentScreen('archive');
