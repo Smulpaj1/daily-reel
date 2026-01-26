@@ -23,6 +23,7 @@ import {
 } from "firebase/firestore";
 
 // --- Data Imports ---
+// Ensure src/data/topMovies.ts exists
 import { TOP_MOVIES_DATABASE } from './data/topMovies';
 
 // --- Types ---
@@ -92,11 +93,11 @@ const FALLBACK_MOVIES: Movie[] = [
 
 const AdSidebar = () => {
     return (
-        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-gray-900 p-6 items-center justify-center sticky top-0 h-screen">
-            <div className="w-full h-96 bg-gray-900 rounded flex flex-col items-center justify-center border border-gray-800">
-                <span className="text-gray-600 font-bold text-xl">Web Ad Space</span>
-                <span className="text-gray-700 text-sm mt-2">Targeted Movie Ads</span>
-            </div>
+        // Updated: Just an empty black container to center the main content
+        <div className="hidden lg:flex flex-col w-64 bg-black border-none p-6 items-center justify-start sticky top-0 h-screen">
+            {/* When you have active AdSense code, you can paste the <ins> tag here.
+          For now, it remains empty and black.
+      */}
         </div>
     );
 };
@@ -135,6 +136,7 @@ const InterstitialAd = ({ onAdFinished }: { onAdFinished: () => void }) => {
     );
 };
 
+// Autocomplete Input Component with Keyboard Navigation
 const AutoCompleteInput = ({
                                onGuess,
                                remainingGuesses,
@@ -167,13 +169,17 @@ const AutoCompleteInput = ({
     const handleChange = (text: string) => {
         setQuery(text);
         onGuess(text);
-        setActiveSuggestionIndex(-1);
+        setActiveSuggestionIndex(-1); // Reset selection on typing
 
         if (text.length > 1) {
+            // Use Set to remove duplicates between static list and fetched movies
             const uniqueTitles = Array.from(new Set(allPossibleMovies));
+
             const filtered = uniqueTitles.filter(title =>
                 title.toLowerCase().includes(text.toLowerCase())
             );
+
+            // Limit suggestions to top 5
             setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
         } else {
@@ -185,7 +191,7 @@ const AutoCompleteInput = ({
         setQuery(title);
         onGuess(title);
         setShowSuggestions(false);
-        setActiveSuggestionIndex(-1);
+        setActiveSuggestionIndex(-1); // Reset selection so next Enter submits
         inputRef.current?.focus();
     };
 
@@ -201,11 +207,13 @@ const AutoCompleteInput = ({
                 setActiveSuggestionIndex(prev => (prev === suggestions.length - 1 ? 0 : prev + 1));
             }
         } else if (e.key === 'Enter') {
+            // If menu is open and an item is highlighted, select it
             if (showSuggestions && activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
                 e.preventDefault();
                 handleSelect(suggestions[activeSuggestionIndex]);
             } else {
-                e.preventDefault();
+                // Otherwise submit the current text
+                e.preventDefault(); // Prevent default form submission if any
                 onEnter();
                 setShowSuggestions(false);
                 setQuery('');
@@ -228,6 +236,7 @@ const AutoCompleteInput = ({
                 />
                 <Search className="absolute left-4 top-4 text-gray-500 w-5 h-5" />
 
+                {/* Suggestions appearing upwards */}
                 {showSuggestions && suggestions.length > 0 && (
                     <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-2xl">
                         {suggestions.map((suggestion, index) => (
@@ -493,7 +502,7 @@ const GameScreen = ({
                 )}
             </div>
 
-            {/* FIXED FOOTER */}
+            {/* FIXED FOOTER - Padding changed to pb-20 and top padding adjusted */}
             <div className="border-t border-black bg-black px-4 pt-[14px] shrink-0 pb-20 z-20">
                 {gameState === 'playing' ? (
                     <AutoCompleteInput
@@ -619,16 +628,7 @@ export default function App() {
 
     const handleNext = () => {
         if (!selectedMovie) return;
-
-        // Filter out the current movie so we don't pick it again immediately
         const otherMovies = moviesList.filter(m => m.id !== selectedMovie.id);
-
-        if (otherMovies.length === 0) {
-            // Safe guard if only 1 movie exists in DB
-            alert("No more movies available to play!");
-            return;
-        }
-
         const unplayed = otherMovies.find(m => !progress[m.id] || progress[m.id].status === 'playing');
 
         if (unplayed) {
@@ -670,6 +670,7 @@ export default function App() {
                                 </div>
                                 <h1 className="text-3xl font-extrabold tracking-tight">Daily Reel</h1>
                             </div>
+                            {/* UPDATED SUBTITLE SIZE */}
                             <p className="text-gray-500 text-center mb-8 text-lg">Guess the movie based on the top billed cast.</p>
 
                             <div className="space-y-3">
