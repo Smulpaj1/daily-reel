@@ -23,7 +23,6 @@ import {
 } from "firebase/firestore";
 
 // --- Data Imports ---
-// Importing the curated list of popular movies for autocomplete
 import { TOP_MOVIES_DATABASE } from './data/topMovies';
 
 // --- Types ---
@@ -136,7 +135,6 @@ const InterstitialAd = ({ onAdFinished }: { onAdFinished: () => void }) => {
     );
 };
 
-// Autocomplete Input Component with Keyboard Navigation
 const AutoCompleteInput = ({
                                onGuess,
                                remainingGuesses,
@@ -169,17 +167,13 @@ const AutoCompleteInput = ({
     const handleChange = (text: string) => {
         setQuery(text);
         onGuess(text);
-        setActiveSuggestionIndex(-1); // Reset selection on typing
+        setActiveSuggestionIndex(-1);
 
         if (text.length > 1) {
-            // Use Set to remove duplicates between static list and fetched movies
             const uniqueTitles = Array.from(new Set(allPossibleMovies));
-
             const filtered = uniqueTitles.filter(title =>
                 title.toLowerCase().includes(text.toLowerCase())
             );
-
-            // Limit suggestions to top 5
             setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
         } else {
@@ -191,7 +185,7 @@ const AutoCompleteInput = ({
         setQuery(title);
         onGuess(title);
         setShowSuggestions(false);
-        setActiveSuggestionIndex(-1); // Reset selection so next Enter submits
+        setActiveSuggestionIndex(-1);
         inputRef.current?.focus();
     };
 
@@ -207,13 +201,11 @@ const AutoCompleteInput = ({
                 setActiveSuggestionIndex(prev => (prev === suggestions.length - 1 ? 0 : prev + 1));
             }
         } else if (e.key === 'Enter') {
-            // If menu is open and an item is highlighted, select it
             if (showSuggestions && activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
                 e.preventDefault();
                 handleSelect(suggestions[activeSuggestionIndex]);
             } else {
-                // Otherwise (menu closed or no highlight), submit the guess
-                e.preventDefault(); // Prevent default form submission if any
+                e.preventDefault();
                 onEnter();
                 setShowSuggestions(false);
                 setQuery('');
@@ -236,7 +228,6 @@ const AutoCompleteInput = ({
                 />
                 <Search className="absolute left-4 top-4 text-gray-500 w-5 h-5" />
 
-                {/* Suggestions appearing upwards */}
                 {showSuggestions && suggestions.length > 0 && (
                     <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-2xl">
                         {suggestions.map((suggestion, index) => (
@@ -274,7 +265,8 @@ const GameScreen = ({
                         onNext,
                         initialState,
                         onSaveProgress,
-                        allMoviesList
+                        allMoviesList,
+                        puzzleNumber
                     }: {
     movie: Movie;
     goBack: () => void;
@@ -282,6 +274,7 @@ const GameScreen = ({
     initialState?: SavedGameState;
     onSaveProgress: (status: 'won' | 'lost' | 'playing', guesses: string[]) => void;
     allMoviesList: Movie[];
+    puzzleNumber: number;
 }) => {
     const [guess, setGuess] = useState('');
     const [guesses, setGuesses] = useState<string[]>(initialState?.guesses || []);
@@ -346,13 +339,16 @@ const GameScreen = ({
         <div className="flex flex-col h-full bg-black min-h-screen">
             {showAd && <InterstitialAd onAdFinished={handleAdFinished} />}
 
-            {/* Header - Fixed Top - Black Border */}
+            {/* Header - Fixed Top - Black Border - With Puzzle # and Subtitle */}
             <div className="flex justify-between items-center p-4 border-b border-black bg-black z-10 shrink-0">
                 <button onClick={goBack} className="flex items-center text-white hover:text-gray-300 transition-colors">
                     <ArrowLeft className="w-6 h-6 mr-2" />
                     <span className="hidden sm:inline font-medium">Archive</span>
                 </button>
-                <h1 className="text-white font-bold text-lg tracking-wide">Daily Reel</h1>
+                <div className="flex flex-col items-center">
+                    <h1 className="text-white font-bold text-lg tracking-wide">Daily Reel #{puzzleNumber}</h1>
+                    <p className="text-gray-500 text-xs text-center">Guess the movie based on the top billed cast.</p>
+                </div>
                 <div className="w-16" />
             </div>
 
@@ -497,7 +493,7 @@ const GameScreen = ({
                 )}
             </div>
 
-            {/* FIXED FOOTER - Padding changed to pb-20 and top padding adjusted */}
+            {/* FIXED FOOTER */}
             <div className="border-t border-black bg-black px-4 pt-[14px] shrink-0 pb-20 z-20">
                 {gameState === 'playing' ? (
                     <AutoCompleteInput
@@ -623,7 +619,16 @@ export default function App() {
 
     const handleNext = () => {
         if (!selectedMovie) return;
+
+        // Filter out the current movie so we don't pick it again immediately
         const otherMovies = moviesList.filter(m => m.id !== selectedMovie.id);
+
+        if (otherMovies.length === 0) {
+            // Safe guard if only 1 movie exists in DB
+            alert("No more movies available to play!");
+            return;
+        }
+
         const unplayed = otherMovies.find(m => !progress[m.id] || progress[m.id].status === 'playing');
 
         if (unplayed) {
@@ -642,6 +647,12 @@ export default function App() {
         );
     }
 
+    // Helper to find the index for the header
+    const getPuzzleNumber = (movie: Movie) => {
+        const index = moviesList.findIndex(m => m.id === movie.id);
+        return moviesList.length - index;
+    };
+
     return (
         <div className="h-screen bg-black text-white font-sans flex justify-center selection:bg-red-500 selection:text-white overflow-hidden">
             <div className="flex w-full max-w-[1200px] h-full">
@@ -659,7 +670,6 @@ export default function App() {
                                 </div>
                                 <h1 className="text-3xl font-extrabold tracking-tight">Daily Reel</h1>
                             </div>
-                            {/* UPDATED SUBTITLE SIZE */}
                             <p className="text-gray-500 text-center mb-8 text-lg">Guess the movie based on the top billed cast.</p>
 
                             <div className="space-y-3">
@@ -708,6 +718,7 @@ export default function App() {
                                 onNext={handleNext}
                                 onSaveProgress={(s, g) => saveProgress(selectedMovie.id, s, g)}
                                 allMoviesList={moviesList}
+                                puzzleNumber={getPuzzleNumber(selectedMovie)}
                             />
                         )
                     )}
