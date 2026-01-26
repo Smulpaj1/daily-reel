@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 
 // --- Data Imports ---
-// Ensure src/data/topMovies.ts exists
+// Importing the curated list of popular movies for autocomplete
 import { TOP_MOVIES_DATABASE } from './data/topMovies';
 
 // --- Types ---
@@ -93,10 +93,10 @@ const FALLBACK_MOVIES: Movie[] = [
 
 const AdSidebar = () => {
     return (
-        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-black p-6 items-center justify-center sticky top-0 h-screen">
-            <div className="w-full h-96 bg-black rounded flex flex-col items-center justify-center border border-gray-800">
-                <span className="text-gray-700 font-bold text-xl">Web Ad Space</span>
-                <span className="text-gray-800 text-sm mt-2">Targeted Movie Ads</span>
+        <div className="hidden lg:flex flex-col w-64 bg-black border-x border-gray-900 p-6 items-center justify-center sticky top-0 h-screen">
+            <div className="w-full h-96 bg-gray-900 rounded flex flex-col items-center justify-center border border-gray-800">
+                <span className="text-gray-600 font-bold text-xl">Web Ad Space</span>
+                <span className="text-gray-700 text-sm mt-2">Targeted Movie Ads</span>
             </div>
         </div>
     );
@@ -120,7 +120,7 @@ const InterstitialAd = ({ onAdFinished }: { onAdFinished: () => void }) => {
             <div className="w-full max-w-md bg-black h-full md:h-auto md:rounded-xl p-8 flex flex-col justify-between items-center border border-gray-800">
                 <span className="text-gray-500 text-xs font-bold tracking-widest uppercase">Sponsored Video</span>
 
-                <div className="w-full aspect-video bg-gray-900 rounded-lg flex flex-col items-center justify-center my-8 border border-gray-800">
+                <div className="w-full aspect-video bg-gray-900 rounded-lg flex flex-col items-center justify-center my-8 border border-gray-700">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
                     <span className="text-white font-medium">Playing Video Ad...</span>
                 </div>
@@ -169,13 +169,17 @@ const AutoCompleteInput = ({
     const handleChange = (text: string) => {
         setQuery(text);
         onGuess(text);
-        setActiveSuggestionIndex(-1);
+        setActiveSuggestionIndex(-1); // Reset selection on typing
 
         if (text.length > 1) {
+            // Use Set to remove duplicates between static list and fetched movies
             const uniqueTitles = Array.from(new Set(allPossibleMovies));
+
             const filtered = uniqueTitles.filter(title =>
                 title.toLowerCase().includes(text.toLowerCase())
             );
+
+            // Limit suggestions to top 5
             setSuggestions(filtered.slice(0, 5));
             setShowSuggestions(true);
         } else {
@@ -232,6 +236,7 @@ const AutoCompleteInput = ({
                 />
                 <Search className="absolute left-4 top-4 text-gray-500 w-5 h-5" />
 
+                {/* Suggestions appearing upwards */}
                 {showSuggestions && suggestions.length > 0 && (
                     <ul className="absolute bottom-full left-0 z-20 w-full bg-gray-900 border border-gray-800 rounded-t-lg mb-1 max-h-64 overflow-y-auto shadow-2xl">
                         {suggestions.map((suggestion, index) => (
@@ -420,9 +425,13 @@ const GameScreen = ({
 
                 {/* Clues Section - Darker borders */}
                 <div className="bg-gray-900/50 rounded-xl p-5 mb-4 border border-gray-900 backdrop-blur-sm">
-                    <div className="flex items-center mb-4">
-                        <Film className="w-4 h-4 text-red-500 mr-2" />
-                        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Movie Details</h3>
+                    {/* UPDATED HEADER: Flex container for title and hint */}
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center">
+                            <Film className="w-4 h-4 text-red-500 mr-2" />
+                            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider">Movie Details</h3>
+                        </div>
+                        <span className="text-xs text-gray-600 italic">Guess to unlock a clue</span>
                     </div>
 
                     <div className="space-y-3">
@@ -488,8 +497,8 @@ const GameScreen = ({
                 )}
             </div>
 
-            {/* FIXED FOOTER - Increased Bottom Padding for Mobile */}
-            <div className="border-t border-black bg-black p-4 shrink-0 pb-24 z-20">
+            {/* FIXED FOOTER - Padding changed to pb-20 and top padding adjusted */}
+            <div className="border-t border-black bg-black px-4 pt-[14px] shrink-0 pb-20 z-20">
                 {gameState === 'playing' ? (
                     <AutoCompleteInput
                         onGuess={setGuess}
@@ -650,7 +659,8 @@ export default function App() {
                                 </div>
                                 <h1 className="text-3xl font-extrabold tracking-tight">Daily Reel</h1>
                             </div>
-                            <p className="text-gray-500 text-center mb-8 text-sm">Guess the movie based on the top billed cast.</p>
+                            {/* UPDATED SUBTITLE SIZE */}
+                            <p className="text-gray-500 text-center mb-8 text-lg">Guess the movie based on the top billed cast.</p>
 
                             <div className="space-y-3">
                                 {moviesList.map((movie, index) => {
